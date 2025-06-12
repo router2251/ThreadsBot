@@ -482,7 +482,7 @@ class AndroidEngagement:
             
             for pattern in time_patterns:
                 if re.match(pattern, text, re.IGNORECASE):
-                    logger.debug(f"Skipping time format: {original_text}")
+                    logger.info(f"SKIPPING TIME FORMAT: {original_text} (matched pattern: {pattern})")
                     return 0
             
             # Skip if text looks like a username with numbers (e.g., "user123", "digital_warrior_777")
@@ -529,12 +529,13 @@ class AndroidEngagement:
                 # Double-check it's not a timestamp like "4M" (4 minutes)
                 # This check should BLOCK standalone "4M", "32M" etc. which are timestamps
                 if re.match(r'^\d+M$', text_upper):
-                    logger.debug(f"Skipping timestamp with M suffix: {original_text}")
+                    logger.info(f"BLOCKING TIMESTAMP WITH M SUFFIX: {original_text} (would be interpreted as millions)")
                     return 0
                     
                 text_clean = text_upper.replace('M', '')
                 try:
                     num = float(text_clean)
+                    logger.info(f"Converting M to millions: {original_text} -> {int(num * 1000000)}")
                     return int(num * 1000000)
                 except:
                     return 0
