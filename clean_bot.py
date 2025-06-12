@@ -482,7 +482,7 @@ class AndroidEngagement:
             
             for pattern in time_patterns:
                 if re.match(pattern, text, re.IGNORECASE):
-                    logger.info(f"SKIPPING TIME FORMAT: {original_text} (matched pattern: {pattern})")
+                    logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (matched pattern: {pattern})")
                     return 0
             
             # Skip if text looks like a username with numbers (e.g., "user123", "digital_warrior_777")
@@ -525,20 +525,21 @@ class AndroidEngagement:
                     return 0
             
             # Handle M (millions) - only if it's clearly an engagement number AND not a timestamp
-            if 'M' in text_upper and any(word in text.lower() for word in ['like', 'reply', 'repost', 'share', 'view']):
-                # Double-check it's not a timestamp like "4M" (4 minutes)
-                # This check should BLOCK standalone "4M", "32M" etc. which are timestamps
+            if 'M' in text_upper:
+                # FIRST check if it's a timestamp like "4M" (4 minutes) - BLOCK these entirely
                 if re.match(r'^\d+M$', text_upper):
-                    logger.info(f"BLOCKING TIMESTAMP WITH M SUFFIX: {original_text} (would be interpreted as millions)")
+                    logger.info(f"🚫 BLOCKED TIMESTAMP WITH M SUFFIX: '{original_text}' (would be interpreted as millions)")
                     return 0
-                    
-                text_clean = text_upper.replace('M', '')
-                try:
-                    num = float(text_clean)
-                    logger.info(f"Converting M to millions: {original_text} -> {int(num * 1000000)}")
-                    return int(num * 1000000)
-                except:
-                    return 0
+                
+                # Only proceed if it has engagement context words
+                if any(word in text.lower() for word in ['like', 'reply', 'repost', 'share', 'view']):
+                    text_clean = text_upper.replace('M', '')
+                    try:
+                        num = float(text_clean)
+                        logger.info(f"Converting M to millions: {original_text} -> {int(num * 1000000)}")
+                        return int(num * 1000000)
+                    except:
+                        return 0
             
             # For standalone numbers, only accept them if they're in a reasonable range for engagement
             if text.isdigit():
