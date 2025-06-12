@@ -1,0 +1,7 @@
+{
+    "min_likes_for_viral": 1000,
+    "min_comments_for_viral": 50,
+    "comment_cooldown": 3600,
+    "follow_cooldown": 7200,
+    "like_cooldown": 300
+}
