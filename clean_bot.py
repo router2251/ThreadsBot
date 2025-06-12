@@ -467,28 +467,29 @@ class AndroidEngagement:
             original_text = text
             text = text.strip()
             
-            # Skip time formats entirely (1h, 2m, 3d, etc.) - these are NOT like counts
             import re
             
-            # CRITICAL FIX: Check for time formats first before any other processing
-            # This MUST block "4m", "32m", "3m" etc. from being interpreted as millions
-            if re.match(r'^\d+[smhdwy]$', text, re.IGNORECASE):
-                logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (time pattern detected)")
-                return 0
+            # CRITICAL FIX: Check for ALL time formats first before any other processing
+            # This MUST block "4m", "32m", "3m", "1h", "5d", etc. from being interpreted as engagement
             
-            if re.match(r'^\d+:\d+$', text):
-                logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (clock time detected)")
-                return 0
+            # Block all time patterns (seconds, minutes, hours, days, weeks, months, years)
+            time_patterns = [
+                r'^\d+s$',      # seconds: 30s
+                r'^\d+m$',      # minutes: 4m, 32m, 3m
+                r'^\d+h$',      # hours: 1h, 24h
+                r'^\d+d$',      # days: 7d, 30d
+                r'^\d+w$',      # weeks: 2w
+                r'^\d+mo$',     # months: 6mo
+                r'^\d+y$',      # years: 1y
+                r'^\d+:\d+$',   # clock time: 7:58, 12:30
+                r'^\d+/\d+$',   # dates: 04/11, 03/29
+                r'^\d+\.\d+$'   # version numbers: 1.5, 2.0
+            ]
             
-            if re.match(r'^\d+mo$', text, re.IGNORECASE):
-                logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (months detected)")
-                return 0
-            
-            # ADDITIONAL CRITICAL CHECK: Block any standalone M that could be minutes
-            # This prevents "4m" from reaching the M handling code below
-            if re.match(r'^\d+m$', text, re.IGNORECASE):
-                logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (minutes format)")
-                return 0
+            for pattern in time_patterns:
+                if re.match(pattern, text, re.IGNORECASE):
+                    logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' -> pattern: {pattern}")
+                    return 0
             
             # Skip if text looks like a username with numbers (e.g., "user123", "digital_warrior_777")
             if re.search(r'[a-zA-Z_]+\d+', text) or re.search(r'\d+[a-zA-Z_]+', text):
@@ -497,15 +498,15 @@ class AndroidEngagement:
             
             # Only look for engagement-related numbers in specific contexts
             engagement_patterns = [
-                r'like\s+(\d+)',           # "like 123"
+                r'like\s+(\d+)',           # "Like 123"
                 r'(\d+)\s+likes?',         # "123 likes"
-                r'reply\s+(\d+)',          # "reply 123"
+                r'reply\s+(\d+)',          # "Reply 123"
                 r'(\d+)\s+replies',        # "123 replies"
-                r'repost\s+(\d+)',         # "repost 123"
+                r'repost\s+(\d+)',         # "Repost 123"
                 r'(\d+)\s+reposts?',       # "123 reposts"
-                r'share\s+(\d+)',          # "share 123"
+                r'share\s+(\d+)',          # "Share 123"
                 r'(\d+)\s+shares?',        # "123 shares"
-                r'view\s+(\d+)',           # "view 123"
+                r'view\s+(\d+)',           # "View 123"
                 r'(\d+)\s+views?',         # "123 views"
             ]
             
@@ -515,6 +516,7 @@ class AndroidEngagement:
                     num = int(match.group(1))
                     # Only return reasonable engagement numbers
                     if 1 <= num <= 10000000:  # 1 to 10 million max
+                        logger.info(f"✅ Found engagement number: '{original_text}' -> {num}")
                         return num
             
             # Convert to uppercase for K/M handling
@@ -525,21 +527,17 @@ class AndroidEngagement:
                 text_clean = text_upper.replace('K', '')
                 try:
                     num = float(text_clean)
-                    return int(num * 1000)
+                    result = int(num * 1000)
+                    logger.info(f"✅ Converting K to thousands: {original_text} -> {result}")
+                    return result
                 except:
                     return 0
             
             # Handle M (millions) - but NEVER for standalone timestamps
             if 'M' in text_upper:
                 # CRITICAL: Block any standalone number+M pattern (these are timestamps)
-                # This should NEVER be reached for "4m", "32m" etc. due to checks above
                 if re.match(r'^\d+M$', text_upper):
                     logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (standalone number+M is a timestamp)")
-                    return 0
-                
-                # DOUBLE CHECK: Also block lowercase m that might have been missed
-                if re.match(r'^\d+m$', original_text):
-                    logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (lowercase minutes format)")
                     return 0
                 
                 # Only proceed if it has clear engagement context words
@@ -547,27 +545,34 @@ class AndroidEngagement:
                     text_clean = text_upper.replace('M', '')
                     try:
                         num = float(text_clean)
-                        logger.info(f"✅ Converting M to millions: {original_text} -> {int(num * 1000000)}")
-                        return int(num * 1000000)
+                        result = int(num * 1000000)
+                        logger.info(f"✅ Converting M to millions: {original_text} -> {result}")
+                        return result
                     except:
                         return 0
+                else:
+                    logger.info(f"🚫 BLOCKED: '{original_text}' (M without engagement context)")
+                    return 0
             
             # For standalone numbers, only accept them if they're in a reasonable range for engagement
             if text.isdigit():
                 num = int(text)
                 # Only accept numbers that could reasonably be engagement counts (1-1M)
                 if 1 <= num <= 1000000:
+                    logger.info(f"✅ Standalone number: '{original_text}' -> {num}")
                     return num
                 else:
                     logger.debug(f"Number {num} outside reasonable engagement range: {original_text}")
                     return 0
             
-            # Handle numbers with decimal points
-            if '.' in text and not re.search(r'[a-zA-Z]', text):
+            # Handle numbers with decimal points (but not dates/versions)
+            if '.' in text and not re.search(r'[a-zA-Z]', text) and not re.match(r'^\d+\.\d+$', text):
                 try:
                     num = float(text)
                     if 1 <= num <= 1000000:
-                        return int(num)
+                        result = int(num)
+                        logger.info(f"✅ Decimal number: '{original_text}' -> {result}")
+                        return result
                     else:
                         logger.debug(f"Decimal number {num} outside reasonable range: {original_text}")
                         return 0
@@ -575,12 +580,13 @@ class AndroidEngagement:
                     return 0
             
             # Try to extract numbers from mixed text - but be very careful
-            numbers = re.findall(r'\d+\.?\d*', text)
+            numbers = re.findall(r'\d+', text)  # Only extract pure digits
             if numbers:
                 try:
-                    num = int(float(numbers[0]))
+                    num = int(numbers[0])
                     # Only accept if it's a reasonable engagement number
                     if 1 <= num <= 1000000:
+                        logger.info(f"✅ Extracted number: '{original_text}' -> {num}")
                         return num
                     else:
                         logger.debug(f"Extracted number {num} outside reasonable range: {original_text}")
