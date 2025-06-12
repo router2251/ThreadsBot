@@ -471,6 +471,7 @@ class AndroidEngagement:
             import re
             
             # CRITICAL FIX: Check for time formats first before any other processing
+            # This MUST block "4m", "32m", "3m" etc. from being interpreted as millions
             if re.match(r'^\d+[smhdwy]$', text, re.IGNORECASE):
                 logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (time pattern detected)")
                 return 0
@@ -481,6 +482,12 @@ class AndroidEngagement:
             
             if re.match(r'^\d+mo$', text, re.IGNORECASE):
                 logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (months detected)")
+                return 0
+            
+            # ADDITIONAL CRITICAL CHECK: Block any standalone M that could be minutes
+            # This prevents "4m" from reaching the M handling code below
+            if re.match(r'^\d+m$', text, re.IGNORECASE):
+                logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (minutes format)")
                 return 0
             
             # Skip if text looks like a username with numbers (e.g., "user123", "digital_warrior_777")
@@ -525,8 +532,14 @@ class AndroidEngagement:
             # Handle M (millions) - but NEVER for standalone timestamps
             if 'M' in text_upper:
                 # CRITICAL: Block any standalone number+M pattern (these are timestamps)
+                # This should NEVER be reached for "4m", "32m" etc. due to checks above
                 if re.match(r'^\d+M$', text_upper):
                     logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (standalone number+M is a timestamp)")
+                    return 0
+                
+                # DOUBLE CHECK: Also block lowercase m that might have been missed
+                if re.match(r'^\d+m$', original_text):
+                    logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (lowercase minutes format)")
                     return 0
                 
                 # Only proceed if it has clear engagement context words
