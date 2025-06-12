@@ -1,0 +1,9 @@
+{
+  "install": "pip install -r requirements.txt",
+  "terminals": [
+    {
+      "name": "Run ThreadsBot",
+      "command": "python clean_bot.py"
+    }
+  ]
+} 
