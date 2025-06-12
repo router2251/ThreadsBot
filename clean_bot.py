@@ -469,21 +469,19 @@ class AndroidEngagement:
             
             # Skip time formats entirely (1h, 2m, 3d, etc.) - these are NOT like counts
             import re
-            time_patterns = [
-                r'^\d+s$',   # seconds (exact match)
-                r'^\d+m$',   # minutes (exact match) - CRITICAL: this prevents "4m" = 4 million
-                r'^\d+h$',   # hours (exact match)
-                r'^\d+d$',   # days (exact match)
-                r'^\d+w$',   # weeks (exact match)
-                r'^\d+mo$',  # months (exact match)
-                r'^\d+y$',   # years (exact match)
-                r'^\d+:\d+$',  # time format like 7:58 (exact match)
-            ]
             
-            for pattern in time_patterns:
-                if re.match(pattern, text, re.IGNORECASE):
-                    logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (matched pattern: {pattern})")
-                    return 0
+            # CRITICAL FIX: Check for time formats first before any other processing
+            if re.match(r'^\d+[smhdwy]$', text, re.IGNORECASE):
+                logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (time pattern detected)")
+                return 0
+            
+            if re.match(r'^\d+:\d+$', text):
+                logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (clock time detected)")
+                return 0
+            
+            if re.match(r'^\d+mo$', text, re.IGNORECASE):
+                logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (months detected)")
+                return 0
             
             # Skip if text looks like a username with numbers (e.g., "user123", "digital_warrior_777")
             if re.search(r'[a-zA-Z_]+\d+', text) or re.search(r'\d+[a-zA-Z_]+', text):
@@ -524,19 +522,19 @@ class AndroidEngagement:
                 except:
                     return 0
             
-            # Handle M (millions) - only if it's clearly an engagement number AND not a timestamp
+            # Handle M (millions) - but NEVER for standalone timestamps
             if 'M' in text_upper:
-                # FIRST check if it's a timestamp like "4M" (4 minutes) - BLOCK these entirely
+                # CRITICAL: Block any standalone number+M pattern (these are timestamps)
                 if re.match(r'^\d+M$', text_upper):
-                    logger.info(f"🚫 BLOCKED TIMESTAMP WITH M SUFFIX: '{original_text}' (would be interpreted as millions)")
+                    logger.info(f"🚫 BLOCKED TIMESTAMP: '{original_text}' (standalone number+M is a timestamp)")
                     return 0
                 
-                # Only proceed if it has engagement context words
+                # Only proceed if it has clear engagement context words
                 if any(word in text.lower() for word in ['like', 'reply', 'repost', 'share', 'view']):
                     text_clean = text_upper.replace('M', '')
                     try:
                         num = float(text_clean)
-                        logger.info(f"Converting M to millions: {original_text} -> {int(num * 1000000)}")
+                        logger.info(f"✅ Converting M to millions: {original_text} -> {int(num * 1000000)}")
                         return int(num * 1000000)
                     except:
                         return 0
