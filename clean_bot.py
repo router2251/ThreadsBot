@@ -475,7 +475,7 @@ class AndroidEngagement:
             # Block all time patterns (seconds, minutes, hours, days, weeks, months, years)
             time_patterns = [
                 r'^\d+s$',      # seconds: 30s
-                r'^\d+m$',      # minutes: 4m, 32m, 3m
+                r'^\d+m$',      # minutes: 4m, 32m, 3m - CRITICAL FIX
                 r'^\d+h$',      # hours: 1h, 24h
                 r'^\d+d$',      # days: 7d, 30d
                 r'^\d+w$',      # weeks: 2w
@@ -488,7 +488,7 @@ class AndroidEngagement:
             
             for pattern in time_patterns:
                 if re.match(pattern, text, re.IGNORECASE):
-                    logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' -> pattern: {pattern}")
+                    logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (matched pattern: {pattern})")
                     return 0
             
             # Skip if text looks like a username with numbers (e.g., "user123", "digital_warrior_777")
