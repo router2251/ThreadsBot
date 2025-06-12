@@ -1,0 +1,12 @@
+{
+  "backgroundAgents": {
+    "enabled": true,
+    "repository": "https://github.com/router2251/ThreadsBot.git",
+    "branch": "main"
+  },
+  "git": {
+    "enabled": true,
+    "autoCommit": false,
+    "autoPush": false
+  }
+} 

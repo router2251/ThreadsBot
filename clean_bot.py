@@ -469,13 +469,13 @@ class AndroidEngagement:
             
             import re
             
-            # CRITICAL FIX: Check for ALL time formats first before any other processing
+            # CRITICAL FIX: Check for ALL time formats FIRST before any other processing
             # This MUST block "4m", "32m", "3m", "1h", "5d", etc. from being interpreted as engagement
             
             # Block all time patterns (seconds, minutes, hours, days, weeks, months, years)
             time_patterns = [
                 r'^\d+s$',      # seconds: 30s
-                r'^\d+m$',      # minutes: 4m, 32m, 3m - CRITICAL FIX
+                r'^\d+m$',      # minutes: 4m, 32m, 3m - CRITICAL FIX FOR TIMESTAMP BUG
                 r'^\d+h$',      # hours: 1h, 24h
                 r'^\d+d$',      # days: 7d, 30d
                 r'^\d+w$',      # weeks: 2w
@@ -486,6 +486,7 @@ class AndroidEngagement:
                 r'^\d+\.\d+$'   # version numbers: 1.5, 2.0
             ]
             
+            # CRITICAL: Check time patterns FIRST before any other processing
             for pattern in time_patterns:
                 if re.match(pattern, text, re.IGNORECASE):
                     logger.info(f"🚫 BLOCKED TIME FORMAT: '{original_text}' (matched pattern: {pattern})")
