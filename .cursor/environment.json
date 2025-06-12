@@ -4,6 +4,11 @@
     {
       "name": "Run ThreadsBot",
       "command": "python clean_bot.py"
+    },
+    {
+      "name": "threadsbit",
+      "command": "run term"
     }
-  ]
-} 
+  ],
+  "start": "npm run dev"
+}
