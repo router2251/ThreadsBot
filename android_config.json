@@ -1,0 +1,9 @@
+{
+    "devices": [
+        {
+            "name": "usb_device",
+            "serial": "usb",
+            "description": "USB Connected Android Device"
+        }
+    ]
+} 
